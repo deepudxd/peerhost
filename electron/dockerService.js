@@ -1,4 +1,24 @@
 const { exec } = require("child_process");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
+
+const appDataPath = path.join(
+  os.homedir(),
+  "AppData",
+  "Roaming",
+  "PeerHost"
+);
+
+const worldPath = path.join(appDataPath, "world");
+
+if (!fs.existsSync(appDataPath)) {
+  fs.mkdirSync(appDataPath);
+}
+
+if (!fs.existsSync(worldPath)) {
+  fs.mkdirSync(worldPath);
+}
 
 function runCommand(command) {
   return new Promise((resolve, reject) => {
@@ -31,7 +51,7 @@ async function containerExists() {
 
 async function createContainer() {
   return runCommand(
-    `docker run -d --name peerhost-mc -p 25565:25565 -e EULA=TRUE -e TYPE=PAPER -e MEMORY=4G -v ${process.cwd()}\\mc-data:/data --restart unless-stopped itzg/minecraft-server`
+    `docker run -d --name peerhost-mc -p 25565:25565 -e EULA=TRUE -e TYPE=PAPER -e MEMORY=4G -v "${worldPath}:/data" --restart unless-stopped itzg/minecraft-server`
   );
 }
 
@@ -67,11 +87,30 @@ async function getContainerStatus() {
   }
 }
 
+function streamLogs(callback) {
+  const logProcess = require("child_process").spawn(
+    "docker",
+    ["logs", "-f", "peerhost-mc"]
+  );
+
+  logProcess.stdout.on("data", (data) => {
+    callback(data.toString());
+  });
+
+  logProcess.stderr.on("data", (data) => {
+    callback(data.toString());
+  });
+
+  return logProcess;
+}
+
+
 module.exports = {
   checkDocker,
   containerExists,
   createContainer,
   startContainer,
   stopContainer,
-  getContainerStatus
+  getContainerStatus,
+  streamLogs
 };
