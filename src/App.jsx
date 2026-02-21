@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [dockerStatus, setDockerStatus] = useState("Checking...");
+  const [serverStatus, setServerStatus] = useState("Checking...");
+
+  useEffect(() => {
+    async function init() {
+      const docker = await window.api.checkDocker();
+      setDockerStatus(docker ? "Docker Running" : "Docker Not Running");
+
+      const status = await window.api.getServerStatus();
+      updateServerState(status);
+    }
+
+    init();
+  }, []);
+
+  const updateServerState = (status) => {
+    if (status === "running") setServerStatus("Running");
+    else if (status === "stopped") setServerStatus("Stopped");
+    else if (status === "not_created") setServerStatus("Not Created");
+    else setServerStatus("Unknown");
+  };
+
+  const start = async () => {
+    await window.api.startServer();
+    const status = await window.api.getServerStatus();
+    updateServerState(status);
+  };
+
+  const stop = async () => {
+    await window.api.stopServer();
+    const status = await window.api.getServerStatus();
+    updateServerState(status);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div style={{ padding: 40 }}>
+      <h1>PeerHost</h1>
+      <h2>Docker: {dockerStatus}</h2>
+      <h2>Server: {serverStatus}</h2>
+      <button onClick={start}>Start Server</button>
+      <button onClick={stop}>Stop Server</button>
+    </div>
+  );
 }
 
-export default App
+export default App;

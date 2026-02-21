@@ -1,5 +1,8 @@
-import { contextBridge } from "electron";
+const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-  ping: () => "pong",
+  checkDocker: () => ipcRenderer.invoke("check-docker"),
+  startServer: () => ipcRenderer.invoke("start-server"),
+  stopServer: () => ipcRenderer.invoke("stop-server"),
+  getServerStatus: () => ipcRenderer.invoke("get-server-status"),
 });
