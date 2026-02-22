@@ -94,7 +94,7 @@ ipcMain.on("start-log-stream", (event) => {
     event.sender.send("server-log", log);
 
     if (log.includes("Done (")) {
-      console.log("Detected Done line");
+      console.log("Detected Donee line");
       event.sender.send("server-ready");
     }
   });
@@ -103,6 +103,7 @@ ipcMain.on("start-log-stream", (event) => {
     logProcess.kill();
   });
 });
+
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
