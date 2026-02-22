@@ -16,15 +16,22 @@ function App() {
 
   // Initialize Docker + Server Status
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       const docker = await window.api.checkDocker();
       setDockerStatus(docker ? "Docker Running" : "Docker Not Running");
 
       const status = await window.api.getServerStatus();
       updateServerState(status);
-    }
+    };
 
     init();
+
+    const interval = setInterval(async () => {
+      const status = await window.api.getServerStatus();
+      updateServerState(status);
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Log listener (separate effect)
@@ -47,31 +54,40 @@ function App() {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [logs]);
+  useEffect(() => {
+  const cleanup = window.api.onServerReady(() => {
+    console.log("SERVER READY RECEIVED");
+    setServerState("Ready");
+  });
 
+  return cleanup;
+}, []);
   const updateServerState = (status) => {
-  if (status === "running") setServerState("STARTING");
-  else if (status === "stopped") setServerState("STOPPED");
-  else if (status === "not_created") setServerState("NOT_CREATED");
-  else setServerState("UNKNOWN");
-};
+    if (status === "running") setServerState("STARTING");
+    else if (status === "stopped") setServerState("STOPPED");
+    else if (status === "not_created") setServerState("NOT_CREATED");
+    else setServerState("UNKNOWN");
+  };
 
   const start = async () => {
-    setServerState("STARTING");
+    setServerState("Starting...");
 
     const result = await window.api.startServer();
 
-    if (!result.success) {
-      setServerState("STOPPED");
-      alert(result.reason);
-      return;
+    if (result.success) {
+      const status = await window.api.getServerStatus();
+      updateServerState(status);
+      window.api.startLogStream();
+    } else {
+      setServerState("LOCKED");
     }
-
-    window.api.startLogStream();
   };
 
   const stop = async () => {
-    window.api.stopLogStream();
+    setServerState("Stopping...");
+
     await window.api.stopServer();
+
     const status = await window.api.getServerStatus();
     updateServerState(status);
   };

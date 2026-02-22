@@ -10,9 +10,12 @@ const {
   streamLogs,
 } = require("./dockerService");
 const { acquireLock, updateHeartbeat, releaseLock } = require("./lockService");
-
+const { startSyncthing } = require("./syncthingService");
+const { getSystemStatus } = require("./syncthingApiService");
+const { ensureFolders } = require("./syncthingApiService");
 let mainWindow;
 let heartbeatInterval = null;
+
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -29,6 +32,16 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startSyncthing();
+  setTimeout(async () => {
+  const status = await getSystemStatus();
+  console.log("Syncthing Status:", status);
+}, 5000);
+  setTimeout(async () => {
+  console.log("Calling ensureFolders...");
+  await ensureFolders();
+  console.log("Folders ensured.");
+}, 8000);
   createWindow();
 
   ipcMain.handle("check-docker", async () => {
@@ -51,7 +64,6 @@ ipcMain.handle("start-server", async () => {
     await startContainer();
   }
 
-  // Start heartbeat every 10 seconds
   heartbeatInterval = setInterval(() => {
     updateHeartbeat();
   }, 10000);
@@ -75,9 +87,16 @@ ipcMain.handle("get-server-status", async () => {
   return await getContainerStatus();
 });
 
+
 ipcMain.on("start-log-stream", (event) => {
   const logProcess = streamLogs((log) => {
+    console.log("LOG LINE:", log); // 🔥 add this
     event.sender.send("server-log", log);
+
+    if (log.includes("Done (")) {
+      console.log("Detected Done line");
+      event.sender.send("server-ready");
+    }
   });
 
   event.sender.on("stop-log-stream", () => {
